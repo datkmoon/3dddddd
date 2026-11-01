@@ -1,0 +1,6 @@
+{
+  "name": "WebAR 3D Model Placer & Viewer",
+  "description": "Upload any 3D model (GLB/GLTF) and place it in Augmented Reality on Android, XR headsets, or mobile. Full manipulation: move, scale, and rotate.",
+  "requestFramePermissions": ["camera"],
+  "majorCapabilities": []
+}
