@@ -244,6 +244,29 @@
         #topic-input, #topic-btn {
             outline: none;
         }
+        /* 🎤 زر المايك — بحث صوتي */
+        #mic-btn {
+            background: #1c1a16;
+            color: #fff;
+            width: 54px;
+            height: 54px;
+            border-radius: 14px;
+            font-size: 22px;
+            line-height: 1;
+            border: 2px solid #d8cfba;
+            cursor: pointer;
+            transition: transform 0.25s, background 0.25s;
+            flex: none;
+        }
+        #mic-btn:hover { transform: translateY(-2px); background: #2a2620; }
+        #mic-btn.listening {
+            background: #c0392b;
+            animation: micPulse 1.1s infinite;
+        }
+        @keyframes micPulse {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(192, 57, 43, 0.55); }
+            50% { box-shadow: 0 0 0 14px rgba(192, 57, 43, 0); }
+        }
 
         /* Rerun button (shown after the build completes) */
         #rerun-btn {
@@ -510,12 +533,13 @@
     <div id="start-overlay">
         <h1 class="text-[#8a8578] font-mono text-sm mb-4 tracking-[0.3em] uppercase">Collaborative Workspace</h1>
         <h2 class="text-[#1c1a16] font-oswald text-5xl md:text-6xl mb-3 tracking-widest uppercase" dir="ltr">LIVE SITE BUILDER</h2>
-        <p class="text-[#7a5a3d] mb-2 font-medium text-lg">اكتب أي موضوع واختر ألوان موقعك الثلاثة… الأسهم تجيب معلوماته الحقيقية من ويكيبيديا وتبني موقعاً كاملاً بصفحة واحدة أمام عينيك</p>
+        <p class="text-[#7a5a3d] mb-2 font-medium text-lg">اكتب أي موضوع — أو گِل بصوتك 🎤 — واختر ألوان موقعك الثلاثة… الأسهم تجيب معلوماته الحقيقية من ويكيبيديا وتبني موقعاً كاملاً بصفحة واحدة أمام عينيك</p>
         <p id="overlay-topic" class="text-[#8a8578] mb-6 font-light">الموضوع الحالي: العراق</p>
         <div class="mb-6 flex items-center justify-center gap-3 flex-wrap">
             <input id="topic-input" type="text" value="" maxlength="30" dir="rtl" placeholder="اكتب أي موضوع يخطر على بالك…"
                 class="bg-white border-2 border-[#d8cfba] rounded-lg px-5 py-3 text-lg text-[#1c1a16] font-medium text-center w-72 focus:outline-none focus:border-[#3f6b4f] transition-colors">
             <button id="topic-btn" class="bg-[#7a5a3d] hover:bg-[#5f4630] text-white px-6 py-3 rounded-lg font-bold transition-colors cursor-pointer">جهّز الموضوع ⚡</button>
+            <button id="mic-btn" type="button" title="اكتب الموضوع بصوتك">🎤</button>
         </div>
         <div class="mb-8 flex items-center justify-center gap-3 flex-wrap">
             <button class="topic-chip" data-topic="العراق">🇮🇶 العراق</button>
@@ -1024,7 +1048,6 @@
                 if (window.rebuildTasks && !window.__started) window.rebuildTasks();
                 window.__usedImgs = {}; // دراسة جديدة = صور جديدة مسموحة
                 fillImages(p);
-                ensureVideo(p.topicName, null); // 🎬 فيديو حقيقي بصفحة الدراسة الواحدة
             }
 
             /* ---------- WIKIMEDIA IMAGE SEARCH (real topic photos) ---------- */
@@ -1797,7 +1820,6 @@
                     h += rFinal(bp, 0) + rFooter(src);
                 }
                 siteContent.innerHTML = themeHtml(h);
-                if (idx === 0 && window.__bookVideo) insertVideoSection(window.__bookVideo, src.topicName);
                 if (last) {
                     const finalP = document.getElementById('final-line');
                     if (finalP) finalP.setAttribute('data-text',
@@ -1818,68 +1840,6 @@
                 });
                 if (window.rebuildTasks) window.rebuildTasks();
             }
-            /* ---------- 🎬 فيديو حقيقي عن الموضوع من ويكيميديا كومنز ---------- */
-            function fetchCommonsVideo(queries) {
-                const qs = (queries || []).filter(Boolean).slice(0, 4);
-                let idx = 0;
-                const tryNext = () => {
-                    if (idx >= qs.length) return Promise.resolve(null);
-                    const q = qs[idx++];
-                    const url = 'https://commons.wikimedia.org/w/api.php?action=query&format=json&origin=*' +
-                        '&generator=search&gsrsearch=' + encodeURIComponent(q + ' filetype:video') +
-                        '&gsrnamespace=6&gsrlimit=10&prop=imageinfo' +
-                        '&iiprop=url|mime|size|extmetadata&iiurlwidth=900';
-                    return fetch(url).then(r => r.json()).then(d => {
-                        const pages = Object.values((d.query || {}).pages || {});
-                        for (let i = 0; i < pages.length; i++) {
-                            const ii = pages[i].imageinfo && pages[i].imageinfo[0];
-                            if (!ii || !ii.mime || !/^video\//.test(ii.mime)) continue;
-                            if (ii.size && ii.size > 120 * 1024 * 1024) continue; // تخطَّ الملفات العملاقة
-                            const em = ii.extmetadata || {};
-                            return {
-                                url: ii.url,
-                                poster: ii.thumburl || '',
-                                name: cleanMeta((em.ObjectName || {}).value) || ('فيديو حقيقي عن ' + q),
-                                desc: cleanMeta(((em.ImageDescriptionAr || em.ImageDescription) || {}).value || '').slice(0, 170)
-                            };
-                        }
-                        return tryNext();
-                    }).catch(() => tryNext());
-                };
-                return tryNext();
-            }
-            function insertVideoSection(v, topic) {
-                const site = document.getElementById('site-content');
-                if (!site || document.getElementById('real-video-sec')) return;
-                const sec = document.createElement('section');
-                sec.id = 'real-video-sec';
-                sec.className = 'max-w-7xl mx-auto px-8 md:px-16 py-8';
-                sec.innerHTML = themeHtml('<div class="rounded-xl overflow-hidden shadow-lg border-2 border-[#e2d9c6] bg-black">' +
-                    '<video src="' + esc(v.url) + '"' + (v.poster ? ' poster="' + esc(v.poster) + '"' : '') +
-                    ' controls playsinline preload="metadata" class="w-full h-[300px] md:h-[420px] object-contain bg-black"></video></div>' +
-                    '<div class="p-4 text-center bg-white rounded-b-xl border border-t-0 border-[#e2d9c6]">' +
-                    '<p class="font-bold text-[#1c1a16]">🎬 ' + esc(v.name) + '</p>' +
-                    '<p class="text-sm text-[#5c584e] font-light mt-1">' +
-                    esc(v.desc || 'فيديو موثق من ويكيميديا كومنز — يشتغل تفاعلياً') + '</p></div>');
-                const heroSec = site.querySelector('section');
-                if (heroSec && heroSec.nextSibling) site.insertBefore(sec, heroSec.nextSibling);
-                else site.appendChild(sec);
-            }
-            function ensureVideo(topic, w) {
-                if (window.__videoTopic === topic) {
-                    if (window.__bookVideo) insertVideoSection(window.__bookVideo, topic);
-                    return;
-                }
-                window.__videoTopic = topic;
-                window.__bookVideo = null;
-                fetchCommonsVideo([topic, (w && w.enTitle), (w && w.title)]).then(v => {
-                    if (!v) return; // ما كو فيديو بهالموضوع — بدون أي فوضى
-                    window.__bookVideo = v;
-                    // حقنه فقط إذا المستخدم لسه بالصفحة الأولى
-                    if ((window.__bookPageIdx || 0) === 0) insertVideoSection(v, topic);
-                });
-            }
-
             function startBook(src, topic, w, N) {
                 const pages = buildBookPages(src, w, topic, N);
                 window.__bookPages = pages;
@@ -1903,8 +1863,6 @@
                         if (window.__imgQueue.indexOf(u) < 0) window.__imgQueue.push(u);
                     }));
                 }).catch(() => {});
-                // 🎬 فيديو حقيقي عن الموضوع بالصفحة الأولى
-                ensureVideo(topic, w);
                 renderBookPage(0);
                 // الانتقال إلى صفحة (تلقائي أثناء البناء / يدوي بعد الإتمام)
                 window.__flipTo = function (idx) {
@@ -2053,13 +2011,6 @@
                         out += '<div class="print-page">';
                         out += '<div class="print-head">📖 ' + esc(src.topicName) + ((N > 1) ? ' · صفحة ' + (idx + 1) + ' من ' + N : ' · موقع كامل بصفحة واحدة') +
                             ' · مصادر: ويكيبيديا + ويكيميديا كومنز</div>';
-                        if (idx === 0 && window.__bookVideo) {
-                            const v = window.__bookVideo;
-                            out += '<div class="print-card" style="margin-bottom:8px">' +
-                                (v.poster ? '<img class="print-bigimg" src="' + esc(v.poster) + '" crossorigin="anonymous">' : '') +
-                                '<h4>🎬 ' + esc(v.name) + '</h4><p>' +
-                                esc(v.desc || 'فيديو حقيقي من ويكيميديا كومنز — يشتغل تفاعلياً بالنسخة الحية من الموقع') + '</p></div>';
-                        }
                         pg.sections.forEach(s => { out += staticSection(s, pool); });
                         out += '<div class="print-end">' + ((N > 1) ? '— نهاية الصفحة ' + (idx + 1) + ' من ' + N + ' —' : '— نهاية الموقع —') + '</div>';
                         out += '<div class="print-final"><h2>' + esc(src.brand) + '</h2>' +
@@ -2937,7 +2888,7 @@
                         if (tok !== topicToken || window.__started) return;
                         startBook(pack, pack.topicName,
                             (w2 && w2.extract && w2.extract.length > 100) ? w2 : null, N);
-                        wikiStatus('✓ جاهز: موقع كامل عن «' + pack.topicName + '» — المحتوى المدقق + صور وفيديو حقيقيين!', true);
+                        wikiStatus('✓ جاهز: موقع كامل عن «' + pack.topicName + '» — المحتوى المدقق + صور حقيقية!', true);
                     });
                     return;
                 }
@@ -2968,6 +2919,50 @@
             if (topicInput) topicInput.addEventListener('keydown', e => {
                 if (e.key === 'Enter') activateTopic(topicInput.value);
             });
+            /* ===== 🎤 بحث صوتي: اكتب الموضوع بصوتك ===== */
+            (function micUI() {
+                const micBtn = document.getElementById('mic-btn');
+                if (!micBtn) return;
+                const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+                if (!SR) { micBtn.style.display = 'none'; return; } // متصفح ما يدعم — نخفي الزر بهدوء
+                const rec = new SR();
+                rec.lang = 'ar-IQ';
+                rec.interimResults = false;
+                rec.maxAlternatives = 1;
+                let listening = false;
+                micBtn.addEventListener('click', function () {
+                    if (listening) { try { rec.stop(); } catch (e) {} return; }
+                    try { rec.start(); } catch (e) { /* مستمر أصلاً */ }
+                });
+                rec.onstart = function () {
+                    listening = true;
+                    micBtn.classList.add('listening');
+                    micBtn.textContent = '🎙️';
+                    wikiStatus('🎤 حاسبي بسمعك… گل الموضوع وبصوت عالي');
+                };
+                rec.onend = function () {
+                    listening = false;
+                    micBtn.classList.remove('listening');
+                    micBtn.textContent = '🎤';
+                };
+                rec.onerror = function (e) {
+                    listening = false;
+                    micBtn.classList.remove('listening');
+                    micBtn.textContent = '🎤';
+                    if (e.error === 'not-allowed' || e.error === 'service-not-allowed')
+                        wikiStatus('🎤 لازم تسمح للمايك من إعدادات المتصفح أول');
+                };
+                rec.onresult = function (ev) {
+                    const r = (ev.results && ev.results[0]) || null;
+                    const said = ((r && r[0]) || {}).transcript || '';
+                    const clean = String(said).replace(/\s+/g, ' ').trim().slice(0, 30);
+                    if (!clean) return;
+                    const inp = document.getElementById('topic-input');
+                    if (inp) inp.value = clean;
+                    wikiStatus('🎤 سمعتك تكول «' + clean + '» — بلّش بيّي!');
+                    activateTopic(clean);
+                };
+            })();
             /* ===== 🎨 لوحة الألوان: ثلاثة ألوان بكيفك — تتطبق فورياً ===== */
             (function themeUI() {
                 const panel = document.getElementById('theme-panel');
@@ -3237,7 +3232,7 @@
                 img.onload = resolve;
                 img.onerror = resolve; // never block the start forever
                 img.src = url;
-                setTimeout(resolve, 12000); // hard timeout per image
+                setTimeout(resolve, 7000); // hard timeout per image — أسرع فتح للزر
             })));
         }
 
@@ -3255,6 +3250,7 @@
         startBtn.addEventListener('click', () => {
             if (startBtn.disabled) return;
             window.__started = true;
+            window.__buildT0 = Date.now(); // ⏱️ مؤقت البناء يبدأ من هون
             const overlay = document.getElementById('start-overlay');
             overlay.style.opacity = '0';
             document.getElementById('editor-ui').style.opacity = '1';
@@ -3765,7 +3761,8 @@
             document.getElementById('assets-dock').style.transform = 'translateY(100%)';
 
             const status = document.getElementById('live-status');
-            status.innerHTML = '&#9679; اكتمل البناء';
+            const bSecs = Math.max(1, Math.round((Date.now() - (window.__buildT0 || Date.now())) / 1000));
+            status.innerHTML = '&#9679; اكتمل البناء بـ ' + bSecs + ' ثانية &#9201;';
             status.classList.remove('animate-pulse', 'text-[#3f6b4f]');
             status.classList.add(window.themeHtml ? window.themeHtml('text-[#3f6b4f]') : 'text-[#3f6b4f]');
             setTimeout(() => document.getElementById('rerun-btn').classList.add('show'), 4200);
