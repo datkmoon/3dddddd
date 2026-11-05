@@ -338,6 +338,13 @@
             transition: opacity 0.6s;
         }
         #control-bar.show { opacity: 1; }
+        /* 🎥 زر الجولة بحالة التشغيل */
+        .ctrl-btn.tour-on {
+            border-color: #3f6b4f;
+            color: #3f6b4f;
+            font-weight: bold;
+            box-shadow: 0 0 12px rgba(63, 107, 79, 0.35);
+        }
         /* ⏸️ شارة الإيقاف المؤقت */
         body.is-paused::after {
             content: '⏸️ الإيقاف المؤقت — اضغط "كمل" أو المسافة للمتابعة';
@@ -615,7 +622,7 @@
         </div>
         <p id="topic-status" class="text-[#8a8578] mb-10 font-medium text-sm min-h-[1.5em]"></p>
         <p class="text-[#8a8578] mb-4 font-light text-sm">🐍 عشرون سهماً بذيول أفاعٍ بيضاء ستبني موقعك أمام عينيك — كتابة بشرية بإيقاع حقيقي وأصوات حية 🔊</p>
-        <p class="text-[#8a8578] mb-4 font-mono text-xs" dir="ltr">S: sound &middot; SPACE: pause &middot; X: listen &middot; F: finish &middot; T: theme &middot; P: PDF &middot; D: dark</p>
+        <p class="text-[#8a8578] mb-4 font-mono text-xs" dir="ltr">S: sound &middot; SPACE: pause &middot; X: listen &middot; F: finish &middot; G: tour &middot; T: theme &middot; P: PDF &middot; D: dark</p>
         <p class="text-[#7a5a3d] mb-8 font-bold text-sm">🛠️ المطور على انستا: <span dir="ltr">@964.wt</span></p>
         <button id="start-btn" disabled class="bg-[#2e5240] text-white px-12 py-4 font-oswald text-xl font-bold uppercase tracking-[0.2em] rounded shadow-[0_0_30px_rgba(63,107,79,0.2)] cursor-not-allowed transition-all">
             جارِ تحميل الأصول&hellip;
@@ -649,6 +656,7 @@
         <button id="tts-btn" class="ctrl-btn" title="اقرأ لي محتوى الموقع بصوت عربي (X)">&#128066; اسمع</button>
         <button id="speed-btn" class="ctrl-btn" title="تسريع البناء">&#9889; سرعة &times;1</button>
         <button id="skip-btn" class="ctrl-btn" title="إكمال كل المهام فوراً (F)">&#9197; إنهاء فوري</button>
+        <button id="tour-btn" class="ctrl-btn" title="الجولة السينمائية — الكاميرا تتبع السرب (G)">&#127909; جولة</button>
         <button id="theme-btn" class="ctrl-btn" title="اختيار ألوان الموقع (T)">🎨 الألوان</button>
         <button id="pdf-btn" class="ctrl-btn" title="تحميل الموقع كاملاً PDF (P)">&#128196; تحميل PDF</button>
         <button id="dark-btn" class="ctrl-btn" title="الوضع الليلي (D)">&#127769; ليلي</button>
@@ -3490,6 +3498,18 @@
         }
 
         function updateTrails() {
+            // 🐭 فكرة Swarm الختامية: بعد الاكتمال كل سهم يطوف حول مؤشرك بحلقة حية
+            if (window.__followMouse && window.__mouseX != null) {
+                const t = Date.now();
+                cursors.forEach((c, i) => {
+                    const ang = (i / cursors.length) * Math.PI * 2 + t * 0.0011;
+                    const rad = 62 + 30 * Math.sin(t * 0.0018 + i * 1.7);
+                    const tx = window.__mouseX + Math.cos(ang) * rad;
+                    const ty = window.__mouseY + Math.sin(ang) * rad;
+                    const p = cursorPos(c);
+                    gsap.set(c.el, { x: p.x + (tx - p.x) * 0.05, y: p.y + (ty - p.y) * 0.05 });
+                });
+            }
             cursors.forEach(c => {
                 const head = cursorPos(c);
                 let prevX = head.x, prevY = head.y;
@@ -3754,9 +3774,15 @@
         function wander(c) {
             if (c.isBusy || !engineActive) return;
 
+            // 🐭 أكثر الأحيان: السرب يطارد ماوسك (فكرة Swarm) — وأحياناً يتشرد بالصفحة
+            const chase = Math.random() < 0.6;
             const margin = 60;
-            const vx = window.scrollX + margin + Math.random() * Math.max(100, window.innerWidth - margin * 2);
-            const vy = window.scrollY + margin + Math.random() * Math.max(100, window.innerHeight * 0.65);
+            const vx = chase
+                ? window.__mouseX + (Math.random() - 0.5) * 420
+                : window.scrollX + margin + Math.random() * Math.max(100, window.innerWidth - margin * 2);
+            const vy = chase
+                ? window.__mouseY + (Math.random() - 0.5) * 320
+                : window.scrollY + margin + Math.random() * Math.max(100, window.innerHeight * 0.65);
 
             // serpentine: curve through a random mid-point → real snake motion
             const pos = cursorPos(c);
@@ -3779,7 +3805,7 @@
          * ============================================================ */
         function processNextBatch() {
             if (window.SKIPPED || buildDone || !engineActive) return;
-            if (Date.now() < navPauseUntil) return; // user clicked a nav button; recovery timer resumes us
+            if (Date.now() < navPauseUntil && !window.__tour) return; // الجولة تتجاوز الانتظار
             dispatchAvailable();
         }
 
@@ -3788,10 +3814,14 @@
             const rect = batches[bi].container.getBoundingClientRect();
             let targetScrollY = (rect.top + window.scrollY) - (window.innerHeight * 0.12);
             targetScrollY = Math.max(0, targetScrollY);
+            // 🎥 بوضع الجولة: حركة كاميرا هادئة مثالية لتصوير الشاشة
+            const dur = window.__tour
+                ? Math.max(1.6, 3.4 * Math.max(0.3, window.SPEED))
+                : Math.max(0.35, 1.2 * window.SPEED);
             gsap.to(window, {
                 scrollTo: targetScrollY,
-                duration: Math.max(0.35, 1.2 * window.SPEED),
-                ease: 'power3.inOut',
+                duration: dur,
+                ease: window.__tour ? 'power2.inOut' : 'power3.inOut',
                 onComplete: dispatchAvailable
             });
         }
@@ -3802,7 +3832,7 @@
          * ============================================================ */
         function dispatchAvailable() {
             if (window.SKIPPED || buildDone || !engineActive) return;
-            if (Date.now() < navPauseUntil) return;
+            if (Date.now() < navPauseUntil && !window.__tour) return; // 🎥 الجولة ما تنتظر أحد
 
             while (true) {
                 // Next unassigned task, in page order, from opened sections
@@ -4164,6 +4194,27 @@
                 speakNext();
             });
         })();
+        // 🎥 الجولة السينمائية: الكاميرا تتبع السرب دائماً — مثالية لتصوير الشاشة
+        (function tourUI() {
+            const btn = document.getElementById('tour-btn');
+            if (!btn) return;
+            btn.addEventListener('click', function () {
+                window.__tour = !window.__tour;
+                btn.classList.toggle('tour-on', !!window.__tour);
+                btn.innerHTML = window.__tour ? '&#127909; جولة شغالة' : '&#127909; جولة';
+                if (window.__tour) {
+                    navPauseUntil = 0; // الجولة تتجاوز أي انتظار
+                    if (engineActive && !window.SKIPPED) dispatchAvailable();
+                }
+            });
+        })();
+        // 🐭 تتبع الماوس: الأسهم الحرة تميل نحوه + بعد الاكتمال تلتف حوله
+        window.__mouseX = window.innerWidth / 2;
+        window.__mouseY = window.innerHeight / 2;
+        document.addEventListener('mousemove', function (e) {
+            window.__mouseX = e.pageX;
+            window.__mouseY = e.pageY;
+        });
         // ⌨️ اختصارات الكيبورد: S صوت · مسافة إيقاف · X اسمع · F إنهاء · T ألوان · P بدي إف · D ليلي
         document.addEventListener('keydown', function (e) {
             if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT')) return;
@@ -4176,6 +4227,7 @@
             if (k === 's') hit('sound-btn');
             else if (k === 'x') hit('tts-btn');
             else if (k === 'f') hit('skip-btn', function () { return window.__started && !window.SKIPPED && !buildDone; });
+            else if (k === 'g') hit('tour-btn');
             else if (k === 't') hit('theme-btn');
             else if (k === 'p') hit('pdf-btn');
             else if (k === 'd') hit('dark-btn');
@@ -4250,6 +4302,7 @@
             if (!target) return;
             gsap.killTweensOf(window);
             gsap.to(window, { scrollTo: target, duration: 0.9, ease: 'power3.inOut' });
+            if (window.__tour) { navPauseUntil = 0; return; } // 🎥 الجولة: السرب يكمل بدون توقف
             if (!engineActive || buildDone) return; // free browsing after finish
             navPauseUntil = Date.now() + 3500;
             clearTimeout(navRecoveryTimer);
@@ -4350,11 +4403,13 @@
                     });
                 },
                 onComplete: () => {
-                    // 3) they fade away one after another — gradually
+                    // 3) 🐭 فكرة Swarm الختامية: ما يختفون — يرجعون بحياة ويطوفون حول مؤشرك أينما رحت
+                    window.__followMouse = true;
                     cursors.forEach((c, i) => {
-                        gsap.to(c.el, { opacity: 0, scale: 0.2, duration: 0.9, delay: 0.16 * i, ease: 'power2.in' });
+                        c.isBusy = false;
+                        gsap.to(c.el, { opacity: 0.92, scale: 1, duration: 0.45, delay: 0.05 * i, ease: 'power2.out' });
                         c.trail.forEach(seg => {
-                            gsap.to(seg.el, { opacity: 0, duration: 0.9, delay: 0.16 * i, ease: 'power2.in' });
+                            gsap.to(seg.el, { opacity: parseFloat(seg.el.dataset.baseOpacity || 0.5), duration: 0.45, delay: 0.05 * i });
                         });
                     });
                 }
