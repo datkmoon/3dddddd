@@ -332,10 +332,28 @@
             display: none;
             align-items: center;
             gap: 8px;
+            flex-wrap: wrap;
+            max-width: min(94vw, 620px);
             opacity: 0;
             transition: opacity 0.6s;
         }
         #control-bar.show { opacity: 1; }
+        /* ⏸️ شارة الإيقاف المؤقت */
+        body.is-paused::after {
+            content: '⏸️ الإيقاف المؤقت — اضغط "كمل" أو المسافة للمتابعة';
+            position: fixed;
+            top: 46px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(28, 26, 22, 0.88);
+            color: #fff;
+            padding: 9px 20px;
+            border-radius: 10px;
+            font-size: 13px;
+            font-weight: bold;
+            z-index: 95500;
+            box-shadow: 0 6px 18px rgba(28, 26, 22, 0.35);
+        }
         /* ===== PDF EXPORT (print) ===== */
         #print-holder { display: none; }
         /* ===== نسخة PDF الثابتة — تنطبق على التحميل المباشر وعلى الطابعة ===== */
@@ -596,7 +614,8 @@
             <button id="theme-ov-btn" class="bg-[#1c1a16] hover:bg-[#5f4630] text-white px-6 py-3 rounded-lg font-bold transition-colors cursor-pointer">🎨 ألوان موقعك — اختر أي ثلاثة ألوان بكيفك</button>
         </div>
         <p id="topic-status" class="text-[#8a8578] mb-10 font-medium text-sm min-h-[1.5em]"></p>
-        <p class="text-[#8a8578] mb-4 font-light text-sm">🐍 عشرون سهماً بذيول أفاعٍ بيضاء ستبني موقعك أمام عينيك — كتابة بشرية بإيقاع حقيقي</p>
+        <p class="text-[#8a8578] mb-4 font-light text-sm">🐍 عشرون سهماً بذيول أفاعٍ بيضاء ستبني موقعك أمام عينيك — كتابة بشرية بإيقاع حقيقي وأصوات حية 🔊</p>
+        <p class="text-[#8a8578] mb-4 font-mono text-xs" dir="ltr">S: sound &middot; SPACE: pause &middot; X: listen &middot; F: finish &middot; T: theme &middot; P: PDF &middot; D: dark</p>
         <p class="text-[#7a5a3d] mb-8 font-bold text-sm">🛠️ المطور على انستا: <span dir="ltr">@964.wt</span></p>
         <button id="start-btn" disabled class="bg-[#2e5240] text-white px-12 py-4 font-oswald text-xl font-bold uppercase tracking-[0.2em] rounded shadow-[0_0_30px_rgba(63,107,79,0.2)] cursor-not-allowed transition-all">
             جارِ تحميل الأصول&hellip;
@@ -623,13 +642,16 @@
         <span class="text-xs text-[#8a8578] mr-8 font-light">اسحب الصور إلى الخانات المخططة &larr; أفلت &larr; اكتمل البناء</span>
     </div>
 
-    <!-- CONTROL BAR: سرعة / إنهاء فوري / وضع ليلي -->
+    <!-- CONTROL BAR: صوت / إيقاف / قراءة / سرعة / إنهاء / ألوان / PDF / ليلي -->
     <div id="control-bar">
+        <button id="sound-btn" class="ctrl-btn" title="صوت البناء (S)">&#128266; صوت</button>
+        <button id="pause-btn" class="ctrl-btn" title="إيقاف مؤقت / متابعة (مسافة)">&#9208; إيقاف</button>
+        <button id="tts-btn" class="ctrl-btn" title="اقرأ لي محتوى الموقع بصوت عربي (X)">&#128066; اسمع</button>
         <button id="speed-btn" class="ctrl-btn" title="تسريع البناء">&#9889; سرعة &times;1</button>
-        <button id="skip-btn" class="ctrl-btn" title="إكمال كل المهام فوراً">&#9197; إنهاء فوري</button>
-        <button id="theme-btn" class="ctrl-btn" title="اختيار ألوان الموقع">🎨 الألوان</button>
-        <button id="pdf-btn" class="ctrl-btn" title="تحميل الموقع كاملاً PDF">&#128196; تحميل PDF</button>
-        <button id="dark-btn" class="ctrl-btn" title="الوضع الليلي">&#127769; ليلي</button>
+        <button id="skip-btn" class="ctrl-btn" title="إكمال كل المهام فوراً (F)">&#9197; إنهاء فوري</button>
+        <button id="theme-btn" class="ctrl-btn" title="اختيار ألوان الموقع (T)">🎨 الألوان</button>
+        <button id="pdf-btn" class="ctrl-btn" title="تحميل الموقع كاملاً PDF (P)">&#128196; تحميل PDF</button>
+        <button id="dark-btn" class="ctrl-btn" title="الوضع الليلي (D)">&#127769; ليلي</button>
     </div>
 
     <!-- 🎨 THEME PANEL: ثلاثة ألوان بكيفك -->
@@ -1060,6 +1082,7 @@
                 if (save !== false) {
                     try { localStorage.setItem('livebook-theme-3', JSON.stringify(window.__THEME)); } catch (e) {}
                 }
+                if (window.SFX) window.SFX.theme(); // 🔊 نغمة انسيابية مع تغير الألوان
             }
 
             /* ---------- RENDER A WHOLE PACK ---------- */
@@ -3400,7 +3423,7 @@
             'Dhiqar_Ed', 'Muthanna_Ed', 'Halabja_Ed', 'Chief_Editor', 'Data_Editor'
         ];
 
-        const TRAIL_LEN = 12;
+        const TRAIL_LEN = 16; // 🐍 ذيول أفاعٍ أطعاف وأطول — أثر أكثر حياة
         const workspace = document.getElementById('workspace-layer');
         const cursors = [];
 
@@ -3491,6 +3514,85 @@
         requestAnimationFrame(updateTrails);
 
         /* ============================================================
+         * 1.5 🔊 محرك الصوت الحي — كل أصوات البناء مولّدة محلياً
+         *     (Web Audio API: بلا أي ملف صوتي خارجي)
+         * ============================================================ */
+        window.SFX = (function () {
+            let ctx = null, master = null;
+            let enabled = true;
+            try { enabled = localStorage.getItem('livebook-sfx') !== 'off'; } catch (e) {}
+            function ensure() {
+                if (!enabled) return null;
+                if (!ctx) {
+                    try {
+                        const AC = window.AudioContext || window.webkitAudioContext;
+                        if (!AC) return null;
+                        ctx = new AC();
+                        master = ctx.createGain();
+                        master.gain.value = 0.42;
+                        master.connect(ctx.destination);
+                    } catch (e) { return null; }
+                }
+                if (ctx.state === 'suspended') ctx.resume();
+                return ctx;
+            }
+            function tone(freq, dur, type, vol, slideTo) {
+                const c = ensure(); if (!c) return;
+                try {
+                    const o = c.createOscillator(), g = c.createGain();
+                    o.type = type || 'sine';
+                    o.frequency.setValueAtTime(freq, c.currentTime);
+                    if (slideTo) o.frequency.exponentialRampToValueAtTime(slideTo, c.currentTime + dur);
+                    g.gain.setValueAtTime(vol || 0.2, c.currentTime);
+                    g.gain.exponentialRampToValueAtTime(0.0001, c.currentTime + dur);
+                    o.connect(g); g.connect(master);
+                    o.start(); o.stop(c.currentTime + dur + 0.02);
+                } catch (e) { /* الصوت تحسيني فقط */ }
+            }
+            function noise(dur, vol, freq) {
+                const c = ensure(); if (!c) return;
+                try {
+                    const len = Math.max(16, Math.floor(c.sampleRate * dur));
+                    const buf = c.createBuffer(1, len, c.sampleRate);
+                    const d = buf.getChannelData(0);
+                    for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 2);
+                    const src = c.createBufferSource(); src.buffer = buf;
+                    const f = c.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = freq || 2000; f.Q.value = 0.8;
+                    const g = c.createGain(); g.gain.value = vol || 0.15;
+                    src.connect(f); f.connect(g); g.connect(master);
+                    src.start();
+                } catch (e) { /* تحسيني */ }
+            }
+            let lastType = 0;
+            return {
+                get on() { return enabled; },
+                toggle() {
+                    enabled = !enabled;
+                    try { localStorage.setItem('livebook-sfx', enabled ? 'on' : 'off'); } catch (e) {}
+                    if (enabled) { ensure(); tone(660, 0.08, 'sine', 0.14); }
+                    return enabled;
+                },
+                boot() { ensure(); tone(440, 0.16, 'sine', 0.16, 660); },
+                type() {
+                    const t = Date.now();
+                    if (t - lastType < 48) return; // لا نغرق الأذن — إيقاع لوحي مريح
+                    lastType = t;
+                    tone(520 + Math.random() * 420, 0.03, 'square', 0.045);
+                },
+                click() { tone(1300, 0.05, 'sine', 0.11); tone(650, 0.06, 'triangle', 0.07); },
+                whoosh() { noise(0.26, 0.12, 320); },
+                drop() { tone(150, 0.22, 'sine', 0.34, 62); noise(0.1, 0.14, 700); },
+                task() { tone(660, 0.09, 'sine', 0.13); setTimeout(() => tone(880, 0.11, 'sine', 0.13), 70); },
+                stamp() { tone(190, 0.14, 'triangle', 0.4, 95); noise(0.07, 0.2, 480); },
+                theme() { tone(500, 0.2, 'sine', 0.1, 980); },
+                fanfare() {
+                    [523, 659, 784, 1046].forEach((f, i) => setTimeout(() => tone(f, 0.34, 'triangle', 0.22), i * 135));
+                    setTimeout(() => tone(1318, 0.55, 'sine', 0.18), 620);
+                }
+            };
+        })();
+
+        /* ============================================================
          * 2. GATHER TASKS (Grouped by target sections)
          *    Re-gatherable: when the user switches topic, the pack engine
          *    re-renders the site and calls window.rebuildTasks().
@@ -3557,9 +3659,9 @@
         };
 
         function updateProgress() {
-            document.getElementById('task-progress').textContent =
-                'المهام ' + doneTasks + '/' + totalTasks;
             const pct = totalTasks > 0 ? (doneTasks / totalTasks) * 100 : 0;
+            document.getElementById('task-progress').textContent =
+                'المهام ' + doneTasks + '/' + totalTasks + ' · ' + Math.round(pct) + '%';
             document.getElementById('progress-bar').style.width = pct + '%';
         }
         updateProgress();
@@ -3597,6 +3699,7 @@
             if (startBtn.disabled) return;
             window.__started = true;
             window.__buildT0 = Date.now(); // ⏱️ مؤقت البناء يبدأ من هون
+            if (window.SFX) window.SFX.boot(); // 🔊 تفعيل الصوت بأول تفاعل (سياسة المتصفحات)
             const overlay = document.getElementById('start-overlay');
             overlay.style.opacity = '0';
             document.getElementById('editor-ui').style.opacity = '1';
@@ -3757,6 +3860,7 @@
                 doneTasks++;
                 updateProgress();
                 sparkAt(task.el);   // 💪 stronger: sparks fly on every completed task
+                if (window.SFX) window.SFX.task(); // 🔊 رنّة إنجاز المهمة
                 release(cursor);
                 done();
             };
@@ -3781,6 +3885,7 @@
          * ============================================================ */
         // Click ripple — white ring that expands when a cursor clicks
         function clickRipple(x, y) {
+            if (window.SFX) window.SFX.click(); // 🔊 طقّة نقرة
             const r = document.createElement('div');
             r.className = 'click-ripple';
             r.style.left = x + 'px';
@@ -3823,6 +3928,7 @@
                 stamp.className = 'section-stamp';
                 batch.container.style.position = 'relative';
                 batch.container.appendChild(stamp);
+                if (window.SFX) window.SFX.stamp(); // 🔊 طقعة الختم
                 gsap.fromTo(stamp,
                     { opacity: 0, scale: 2.4, rotation: -25 },
                     { opacity: 1, scale: 1, rotation: -12, duration: 0.5, ease: 'back.out(2)' }
@@ -3856,6 +3962,7 @@
                     // Ghost image appears attached to cursor
                     cursor.ghost.src = task.imgSrc;
                     gsap.set(cursor.ghost, { x: dockX, y: dockY, scale: 0.3, opacity: 1, rotation: 0 });
+                    if (window.SFX) window.SFX.whoosh(); // 🔊 حفيف سحب الصورة
 
                     // 2. Drag the image to the box (with a subtle wobble)
                     gsap.to(cursor.ghost, { rotation: 4, duration: 0.25, yoyo: true, repeat: 5, ease: 'sine.inOut' });
@@ -3879,6 +3986,7 @@
                             targetBox.classList.remove('wireframe-box');
                             targetBox.classList.add('built-box');
                             targetBox.style.boxShadow = '0 0 22px rgba(63,107,79,0.35)';
+                            if (window.SFX) window.SFX.drop(); // 🔊 إفلات الصورة بمكانها
 
                             // Real image pops in
                             gsap.to(innerImg, { opacity: 1, duration: 0.35 });
@@ -3949,6 +4057,7 @@
 
             function sleep(ms) {
                 if (window.SKIPPED) return; // instant-finish pressed
+                if (window.__paused) { setTimeout(() => sleep(ms), 300); return; } // ⏸️ إيقاف مؤقت — الكتابة تنتظر
                 setTimeout(step, ms);
             }
 
@@ -3962,6 +4071,7 @@
                 out += ch;
                 pos++;
                 render();
+                if (window.SFX) window.SFX.type(); // 🔊 طقّة لوحة مفاتيح
 
                 let delay = (19 + Math.random() * 30) * S;              // أساس بشري هادئ
                 if (ch === ' ') delay = (26 + Math.random() * 34) * S;   // فواصل كلمات مريحة
@@ -3976,15 +4086,120 @@
         /* ============================================================
          * 12. CONTROL BUTTONS — سرعة / إنهاء فوري / وضع ليلي / تنقل
          * ============================================================ */
-        // ⚡ Speed: ×1 ⇄ ×2
+        // 🔊 الصوت: تشغيل / كتم — ينحفظ بالمتصفح
+        (function soundUI() {
+            const btn = document.getElementById('sound-btn');
+            if (!btn) return;
+            const paint = function () {
+                btn.innerHTML = (window.SFX && window.SFX.on) ? '&#128266; صوت' : '&#128263; صامت';
+            };
+            paint();
+            btn.addEventListener('click', function () {
+                if (!window.SFX) return;
+                window.SFX.toggle();
+                paint();
+            });
+        })();
+        // ⏸️ إيقاف مؤقت: يجمّد البناء كله (الكتابة + الحركة) وبالمتابعة يكمل من نفس النقطة
+        (function pauseUI() {
+            const btn = document.getElementById('pause-btn');
+            if (!btn) return;
+            btn.addEventListener('click', function () {
+                if (buildDone || !window.__started) return;
+                if (!window.__paused) {
+                    window.__paused = true;
+                    engineActive = false;
+                    document.body.classList.add('is-paused');
+                    try { gsap.globalTimeline.pause(); } catch (e) {}
+                    btn.innerHTML = '&#9654; كمل';
+                } else {
+                    window.__paused = false;
+                    engineActive = true;
+                    document.body.classList.remove('is-paused');
+                    try { gsap.globalTimeline.play(); } catch (e) {}
+                    btn.innerHTML = '&#9208; إيقاف';
+                    if (!window.SKIPPED) dispatchAvailable();
+                }
+            });
+        })();
+        // 👂 القارئ الصوتي: يقرأ محتوى الموقع المبني بصوت عربي حقيقي
+        (function ttsUI() {
+            const btn = document.getElementById('tts-btn');
+            if (!btn) return;
+            const synth = window.speechSynthesis;
+            if (!synth) { btn.style.display = 'none'; return; }
+            let queue = [], speaking = false;
+            const paint = function () { btn.innerHTML = speaking ? '&#9209; توقف' : '&#128066; اسمع'; };
+            function collect() {
+                const site = document.getElementById('site-content');
+                if (!site) return [];
+                const out = [];
+                site.querySelectorAll('h1, h2').forEach(h => {
+                    const t = (h.getAttribute('data-text') || h.innerText || '').trim();
+                    if (t) out.push(t);
+                });
+                site.querySelectorAll('p').forEach(p => {
+                    const t = (p.getAttribute('data-text') || p.innerText || '').trim();
+                    if (t && t.length > 25 && t.length < 420) out.push(t);
+                });
+                return out.slice(0, 80);
+            }
+            function speakNext() {
+                if (!queue.length) { speaking = false; paint(); return; }
+                const u = new SpeechSynthesisUtterance(queue.shift());
+                u.lang = 'ar';
+                u.rate = 1;
+                u.onend = speakNext;
+                u.onerror = function () { speaking = false; queue = []; paint(); };
+                synth.speak(u);
+            }
+            btn.addEventListener('click', function () {
+                if (speaking) {
+                    synth.cancel(); queue = []; speaking = false; paint();
+                    return;
+                }
+                queue = collect();
+                if (!queue.length) return;
+                speaking = true; paint();
+                speakNext();
+            });
+        })();
+        // ⌨️ اختصارات الكيبورد: S صوت · مسافة إيقاف · X اسمع · F إنهاء · T ألوان · P بدي إف · D ليلي
+        document.addEventListener('keydown', function (e) {
+            if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT')) return;
+            const k = (e.key || '').toLowerCase();
+            const hit = function (id, guard) {
+                if (guard && !guard()) return;
+                const b = document.getElementById(id);
+                if (b) b.click();
+            };
+            if (k === 's') hit('sound-btn');
+            else if (k === 'x') hit('tts-btn');
+            else if (k === 'f') hit('skip-btn', function () { return window.__started && !window.SKIPPED && !buildDone; });
+            else if (k === 't') hit('theme-btn');
+            else if (k === 'p') hit('pdf-btn');
+            else if (k === 'd') hit('dark-btn');
+            else if (k === ' ') {
+                if (window.__started && !buildDone) { e.preventDefault(); hit('pause-btn'); }
+            }
+        });
+
+        // ⚡ Speed: ×1 ⇄ ×2 ⇄ ×3 (ثلاث مستويات)
         document.getElementById('speed-btn').addEventListener('click', function () {
-            window.SPEED = (window.SPEED === 1) ? 0.35 : 1;
-            this.innerHTML = window.SPEED === 1 ? '&#9889; سرعة &times;1' : '&#9889; سرعة &times;2';
+            window.SPEED = (window.SPEED === 1) ? 0.5 : ((window.SPEED === 0.5) ? 0.22 : 1);
+            this.innerHTML = (window.SPEED === 1) ? '&#9889; سرعة &times;1'
+                : ((window.SPEED === 0.5) ? '&#9889; سرعة &times;2' : '&#9889; سرعة &times;3');
         });
 
         // ⏭ Instant finish: complete every remaining task at once
         document.getElementById('skip-btn').addEventListener('click', function () {
-            if (window.SKIPPED || buildDone || !engineActive) return;
+            if (window.SKIPPED || buildDone || (!engineActive && !window.__paused)) return;
+            if (window.__paused) { // ⏸️ فك الإيقاف أول حتى يشتغل اللمس الأخير
+                window.__paused = false;
+                try { gsap.globalTimeline.play(); } catch (e) {}
+                const pb = document.getElementById('pause-btn');
+                if (pb) pb.innerHTML = '&#9208; إيقاف';
+            }
             window.SKIPPED = true;
             window.__bookFinished = true;
             engineActive = false;
@@ -4050,6 +4265,43 @@
         });
 
         /* ============================================================
+         * 12.5 🎉 CONFETTI — احتفال بولادة الموقع بألوان ثيمك
+         * ============================================================ */
+        function confettiBurst() {
+            try {
+                const cv = document.createElement('canvas');
+                cv.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:96000;';
+                document.body.appendChild(cv);
+                cv.width = cv.offsetWidth || window.innerWidth;
+                cv.height = cv.offsetHeight || window.innerHeight;
+                const c2 = cv.getContext('2d');
+                if (!c2) { cv.remove(); return; }
+                const cols = (window.themeAccents && window.themeAccents()) || ['#3f6b4f', '#7a5a3d', '#d4af37'];
+                const P = [];
+                for (let i = 0; i < 150; i++) P.push({
+                    x: Math.random() * cv.width,
+                    y: -30 - Math.random() * cv.height * 0.4,
+                    w: 6 + Math.random() * 7, h: 8 + Math.random() * 9,
+                    c: cols[i % cols.length],
+                    r: Math.random() * Math.PI, vr: (Math.random() - 0.5) * 0.3,
+                    vy: 2.4 + Math.random() * 3.4, vx: (Math.random() - 0.5) * 1.8
+                });
+                const t0 = Date.now();
+                (function anim() {
+                    c2.clearRect(0, 0, cv.width, cv.height);
+                    P.forEach(p => {
+                        p.x += p.vx; p.y += p.vy; p.r += p.vr;
+                        c2.save(); c2.translate(p.x, p.y); c2.rotate(p.r);
+                        c2.fillStyle = p.c; c2.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
+                        c2.restore();
+                    });
+                    if (Date.now() - t0 < 4500) requestAnimationFrame(anim);
+                    else cv.remove();
+                })();
+            } catch (e) { /* تحسيني */ }
+        }
+
+        /* ============================================================
          * 13. FINISH — the snakes gather in a swirling circle at the
          *     center of the screen and gradually disappear
          * ============================================================ */
@@ -4058,6 +4310,10 @@
             buildDone = true;
             window.__bookFinished = true;
             engineActive = false;
+            confettiBurst(); // 🎉 كونفيتي بألوان الثيم
+            if (window.SFX) window.SFX.fanfare(); // 🔊 فانفير النصر
+            window.__paused = false;
+            document.body.classList.remove('is-paused'); // تأمين: لا شارة إيقاف بعد الاكتمال
 
             const cx = window.scrollX + window.innerWidth / 2;
             const cy = window.scrollY + window.innerHeight / 2;
